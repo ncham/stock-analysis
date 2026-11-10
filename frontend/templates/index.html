@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Analysis</title>
+</head>
+
+<body>
+    <h1>Analysis</h1>
+    <button onclick="trainModel()">Train Model</button>
+    <button onclick="predictStock()">Predict</button>
+    <button onclick="plotStock()">Plot</button>
+    <button onclick="plotPredictFuture()">Predict Future</button>
+
+    <form action="/plot" method="get" target="_blank">
+        <label for="symbol">Enter Symbol:</label>
+        <select id="symbol" name="symbol" required>
+            {% for symbol in symbols %}
+            <option value="{{ symbol }}">{{ symbol }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit">Visualize</button>
+    </form>
+
+    <label for="num_days">Num Days:</label>
+    <select id="num_days" name="num_days" required>
+        <option value="10">10</option>
+        <option value="15">15</option>
+        <option value="20">20</option>
+    </select>
+
+    <script>
+        async function trainModel() {
+            const symbol = document.getElementById("symbol").value;
+            const response = await fetch("/train", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ symbol }),
+            });
+            const result = await response.json();
+            alert(JSON.stringify(result));
+        }
+
+        async function predictStock() {
+            const symbol = prompt("Enter Stock Symbol:");
+            const date = prompt("Enter Date (YYYY-MM-DD):");
+            const response = await fetch("/predict", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ symbol, date }),
+            });
+            const result = await response.json();
+            alert(JSON.stringify(result));
+        }
+
+        async function plotStock() {
+            const symbol = document.getElementById("symbol").value;
+
+            if (!symbol) {
+                alert("Please select a symbol and enter the date range.");
+                return;
+            }
+
+            const response = await fetch(`/plot_predict?symbol=${symbol}`);
+            window.open(`/plot_predict?symbol=${symbol}`, "_blank");
+        }
+
+        async function plotPredictFuture(){
+            const symbol = document.getElementById("symbol").value;
+            const num_days = document.getElementById("num_days").value;
+
+            if (!symbol) {
+                alert("Please select a symbol and enter the date range.");
+                return;
+            }
+
+            const response = await fetch(`/plot_predict_future?symbol=${symbol}&num_days=${num_days}`);
+            window.open(`/plot_predict_future?symbol=${symbol}&num_days=${num_days}`, "_blank");
+        }
+
+        async function visualizeData() {
+            const symbol = prompt("Enter Stock Symbol:");
+            const response = await fetch(`/visualize?symbol=${symbol}`);
+            const data = await response.json();
+
+            const dates = data.map(item => item.date);
+            const closePrices = data.map(item => item.close);
+            const ma9 = data.map(item => item.ma_9);
+            const ma21 = data.map(item => item.ma_21);
+
+            const ctx = document.getElementById('stockChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: 'Close Price',
+                            data: closePrices,
+                            borderColor: 'red',
+                            fill: false,
+                        },
+                        {
+                            label: '9-Day MA',
+                            data: ma9,
+                            borderColor: 'green',
+                            fill: false,
+                        },
+                        {
+                            label: '21-Day MA',
+                            data: ma21,
+                            borderColor: 'blue',
+                            fill: false,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: true },
+                        title: { display: true, text: 'Stock Prices and Moving Averages' },
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Date' } },
+                        y: { title: { display: true, text: 'Price' } },
+                    },
+                },
+            });
+        }
+    </script>
+</body>
+
+</html>
